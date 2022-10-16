@@ -642,6 +642,59 @@ window_find_string(struct window *w, const char *s)
 	return (window_get_active_at(w, x, y));
 }
 
+void 
+save_window_pane_layout(struct window_pane *wp1, struct window *w) {
+	TAILQ_FOREACH(wp1, &w->panes, entry) {
+		wp1->saved_layout_cell = wp1->layout_cell;
+		wp1->layout_cell = NULL;
+	}
+
+	w->saved_layout_root = w->layout_root;
+}
+
+int
+window_zoom_option(struct window_pane *wp, u_int zoom_mode)
+{
+	struct window		*w = wp->window;
+	struct window_pane	*wp1;
+
+	if (window_count_panes(w) == 1)
+		return (-1);
+
+	if (w->active != wp)
+		window_set_active_pane(w, wp, 1);
+
+	switch (zoom_mode) {
+		case VERTICAL_ZOOM:
+			{
+				save_window_pane_layout(wp1, w);				
+				layout_init_vertical(w, wp);
+				if (layout_fix_panes_vertical(w, wp) == -1) {
+					log_debug("5erigila in vertical zoom\n");
+					return (-1);
+				}
+				w->flags |= WINDOW_VERTICALLY_ZOOMED;
+				notify_window("window-layout-changed", w);
+			}
+			return (0);
+		case HORIZONTAL_ZOOM:
+			{
+				if (w->flags & WINDOW_HORIZONTALLY_ZOOMED)
+					return (-1);
+				save_window_pane_layout(wp1, w);				
+				layout_init_vertical(w, wp);
+				if (layout_fix_panes_horizontal(w, wp) == -1)
+					return (-1);
+				w->flags |= WINDOW_HORIZONTALLY_ZOOMED;
+				notify_window("window-layout-changed", w);
+			}
+			return (0);
+	}
+	return (-1);
+}
+
+void layout_init_vertical(struct window *w, struct window_pane *wp);
+
 int
 window_zoom(struct window_pane *wp)
 {
@@ -675,10 +728,12 @@ window_unzoom(struct window *w)
 {
 	struct window_pane	*wp;
 
-	if (!(w->flags & WINDOW_ZOOMED))
+	if (!(w->flags & WINDOW_ZOOMED) && !(w->flags & WINDOW_VERTICALLY_ZOOMED) && !(w->flags & WINDOW_HORIZONTALLY_ZOOMED))
 		return (-1);
 
 	w->flags &= ~WINDOW_ZOOMED;
+	w->flags &= ~WINDOW_VERTICALLY_ZOOMED;
+	w->flags &= ~WINDOW_HORIZONTALLY_ZOOMED;
 	layout_free(w);
 	w->layout_root = w->saved_layout_root;
 	w->saved_layout_root = NULL;

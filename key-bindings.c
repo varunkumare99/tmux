@@ -400,6 +400,8 @@ key_bindings_init(void)
 		"bind -N 'Choose a window from a list' w { choose-tree -Zw }",
 		"bind -N 'Kill the active pane' x { confirm-before -p\"kill-pane #P? (y/n)\" kill-pane }",
 		"bind -N 'Zoom the active pane' z { resize-pane -Z }",
+		"bind -N 'Zoom the active pane vertically' v { resize-pane -V }",
+		"bind -N 'Zoom the active pane horizontally' h { resize-pane -H }",
 		"bind -N 'Swap the active pane with the pane above' '{' { swap-pane -U }",
 		"bind -N 'Swap the active pane with the pane below' '}' { swap-pane -D }",
 		"bind -N 'Show messages' '~' { show-messages }",

@@ -36,7 +36,7 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.name = "resize-pane",
 	.alias = "resizep",
 
-	.args = { "DLMRTt:Ux:y:Z", 0, 1, NULL },
+	.args = { "DLMRTt:Ux:y:Z:V:H", 0, 1, NULL },
 	.usage = "[-DLMRTUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
@@ -85,8 +85,47 @@ cmd_resize_pane_exec(struct cmd *self, struct cmdq_item *item)
 		return (CMD_RETURN_NORMAL);
 	}
 
+	if (args_has(args, 'V')) {
+		log_debug("2erigila in vertical zoom\n");
+		int errorCode;
+		if (w->flags & WINDOW_HORIZONTALLY_ZOOMED
+				|| w->flags & WINDOW_VERTICALLY_ZOOMED
+				|| w->flags & WINDOW_ZOOMED)
+			window_unzoom(w);
+		else
+			errorCode = window_zoom_option(wp, VERTICAL_ZOOM);
+		log_debug("8erigila in vertical zoom\n");
+		if (errorCode == -1) {
+			char error[] = "Cannot zoom vertically, as panes are not aligned";
+			status_message_set(c, -1, 1, 0, "%s", error);
+		}
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args_has(args, 'H')) {
+		int errorCode;
+		if (w->flags & WINDOW_HORIZONTALLY_ZOOMED
+				|| w->flags & WINDOW_VERTICALLY_ZOOMED
+				|| w->flags & WINDOW_ZOOMED)
+			window_unzoom(w);
+		else
+			errorCode = window_zoom_option(wp, HORIZONTAL_ZOOM);
+		if (errorCode == -1) {
+			char error[] = "Cannot zoom horizontally, as panes are not aligned";
+			status_message_set(c, -1, 1, 0, "%s", error);
+		}
+		/* else { */
+		/* 	status_message_clear(c); */
+		/* } */
+		server_redraw_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
+
 	if (args_has(args, 'Z')) {
-		if (w->flags & WINDOW_ZOOMED)
+		if (w->flags & WINDOW_ZOOMED
+				|| w->flags & WINDOW_VERTICALLY_ZOOMED
+				|| w->flags & WINDOW_HORIZONTALLY_ZOOMED)
 			window_unzoom(w);
 		else
 			window_zoom(wp);

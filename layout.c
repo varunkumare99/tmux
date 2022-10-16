@@ -284,6 +284,119 @@ layout_add_border(struct window *w, struct layout_cell *lc, int status)
 	return (0);
 }
 
+/* check if horizontal/vertical zoom is possible */
+int
+is_possibleZoom(struct window *w, struct window_pane *skip, u_int flag) {
+
+	struct window_pane	*wp;
+	u_int skip_start, skip_end, wp_start, wp_end, is_possible;
+
+	is_possible = 1;
+	if (flag) { //horizontal
+		skip_start = skip->yoff;
+		skip_end = skip->yoff + skip->sy;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			wp_start = wp->yoff;
+			wp_end = wp->yoff + wp->sy;
+
+			if (wp == skip) {
+				continue;
+			}
+
+			else if (((wp_start >= skip_start && wp_start <=skip_end) && !(wp_end >=skip_start && wp_end <= skip_end)) ||
+				(!(wp_start >=skip_start && wp_start <=skip_end) && (wp_end >= skip_start && wp_end <=skip_end)))
+			{
+				is_possible = 0;
+				break;
+			}
+		}
+	}
+
+	else { //vertical
+		skip_start = skip->xoff;
+		skip_end = skip->xoff + skip->sx;
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			wp_start = wp->xoff;
+			wp_end = wp->xoff + wp->sx;
+
+			if (wp == skip) {
+				continue;
+			}
+
+			else if (((wp_start >= skip_start && wp_start <=skip_end) && !(wp_end >=skip_start && wp_end <= skip_end)) ||
+				(!(wp_start >=skip_start && wp_start <=skip_end) && (wp_end >= skip_start && wp_end <=skip_end)))
+			{
+				is_possible = 0;
+				break;
+			}
+		}
+	}
+	return is_possible;
+}
+
+
+int
+layout_fix_panes_horizontal(struct window *w, struct window_pane *skip)
+{
+	struct window_pane	*wp;
+	int			 status;
+
+	status = options_get_number(w->options, "pane-border-status");
+	int start = skip->yoff;
+	int end = skip->yoff + skip->sy;
+	if (!is_possibleZoom(w, skip, 1)) {
+		return -1;
+	}
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		int w_start = wp->yoff;
+		int w_end = wp->yoff + wp->sy;
+		if (wp == skip) {
+			wp->xoff = 0;
+			window_pane_resize(wp, 136, wp->sy);
+		}
+		else if( (w_start >=start && w_start <=end) || (w_end >= start && w_end <= end)) {
+			wp->sx = 0;
+			wp->sy = 0;
+			window_pane_resize(wp, wp->sx, wp->sy);
+		}
+		else {
+			window_pane_resize(wp, wp->sx, wp->sy);
+		}
+	}
+	return 0;
+}
+/* Update pane offsets and sizes based on their cells. */
+int
+layout_fix_panes_vertical(struct window *w, struct window_pane *skip)
+{
+	struct window_pane	*wp;
+	int			 status;
+
+	log_debug("erigila in vertical zoom\n");
+	status = options_get_number(w->options, "pane-border-status");
+	int start = skip->xoff;
+	int end = skip->xoff + skip->sx;
+	if (!is_possibleZoom(w, skip, 0)) {
+		return -1;
+	}
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		int w_start = wp->xoff;
+		int w_end = wp->xoff + wp->sx;
+		log_debug("nikhil, start %d, end %d, w_start %d , w_end %d", start, end, w_start, w_end);
+		if (wp == skip) {
+			wp->yoff = 0;
+			window_pane_resize(wp, wp->sx, 37);
+		}
+		else if( (w_start >=start && w_start <=end) && (w_end >= start && w_end <= end)) {
+			log_debug("nikhilx, start %d, end %d, w_start %d , w_end %d", start, end, w_start, w_end);
+			wp->sx = 0;
+			wp->sy = 0;
+			window_pane_resize(wp, wp->sx, wp->sy);
+		}
+	}
+	return 0;
+}
+
 /* Update pane offsets and sizes based on their cells. */
 void
 layout_fix_panes(struct window *w, struct window_pane *skip)
@@ -474,6 +587,31 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	}
 }
 
+
+u_int
+getZoomMode(struct window* w) {
+	if (w->flags & WINDOW_ZOOMED) {
+		return FULL_ZOOM;
+	}
+	else if (w->flags & WINDOW_VERTICALLY_ZOOMED) {
+		return VERTICAL_ZOOM;
+	}
+	else if (w->flags & WINDOW_HORIZONTALLY_ZOOMED) {
+		return HORIZONTAL_ZOOM;
+	}
+	return FULL_ZOOM;
+}
+
+void
+layout_init_vertical(struct window *w, struct window_pane *wp)
+{
+	struct layout_cell	*lc;
+
+	lc = w->layout_root = layout_create_cell(NULL);
+	layout_set_size(lc, w->sx, w->sy, 0, 0);
+	layout_make_leaf(lc, wp);
+	/* layout_fix_panes_vertical(w, wp); */
+}
 void
 layout_init(struct window *w, struct window_pane *wp)
 {

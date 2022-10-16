@@ -1127,6 +1127,8 @@ struct window {
 #define WINDOW_ZOOMED 0x8
 #define WINDOW_WASZOOMED 0x10
 #define WINDOW_RESIZE 0x20
+#define WINDOW_VERTICALLY_ZOOMED 0x40
+#define WINDOW_HORIZONTALLY_ZOOMED 0x80
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	int			 alerts_queued;
@@ -1969,6 +1971,13 @@ struct options_table_entry {
 struct options_name_map {
 	const char		*from;
 	const char		*to;
+};
+
+/* zoom options */
+enum {
+	FULL_ZOOM,
+	HORIZONTAL_ZOOM,
+	VERTICAL_ZOOM
 };
 
 /* Common command usages. */
@@ -2979,6 +2988,7 @@ struct window_pane *window_add_pane(struct window *, struct window_pane *,
 void		 window_resize(struct window *, u_int, u_int, int, int);
 void		 window_pane_send_resize(struct window_pane *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
+int      window_zoom_option(struct window_pane *wp, u_int zoom_mode);
 int		 window_unzoom(struct window *);
 int		 window_push_zoom(struct window *, int, int);
 int		 window_pop_zoom(struct window *);
@@ -3042,6 +3052,8 @@ void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_offsets(struct window *);
 void		 layout_fix_panes(struct window *, struct window_pane *);
+int          layout_fix_panes_vertical(struct window *, struct window_pane *);
+int 		 layout_fix_panes_horizontal(struct window *, struct window_pane *);
 void		 layout_resize_adjust(struct window *, struct layout_cell *,
 		     enum layout_type, int);
 void		 layout_init(struct window *, struct window_pane *);
